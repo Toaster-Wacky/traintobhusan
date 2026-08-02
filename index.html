@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KTX-101: Geometric Survival</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --black:#080808; --red:#c0392b; --red-d:#7b241c;
+  --green:#27ae60; --green-b:#2ecc71;
+  --blue:#2980b9; --purple:#8e44ad;
+  --orange:#e67e22; --gold:#f39c12;
+  --teal:#00bcd4; --pink:#e84393;
+  --text:#e8e8e8; --dim:#7a7a7a;
+  --border:#232323; --surf:#111; --surf2:#1a1a1a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Sarabun',sans-serif;background-color:var(--black);color:var(--text);
+  background-image:linear-gradient(rgba(255,255,255,0.015) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(255,255,255,0.015) 1px,transparent 1px);
+  background-size:32px 32px;min-height:100vh;padding-bottom:80px;}
+.ck{font-family:'Chakra Petch',sans-serif;}
+
+/* scanline */
+.scanline{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);}
+
+/* HUD */
+#hud{position:fixed;top:0;left:0;right:0;height:52px;background:rgba(8,8,8,0.97);
+  border-bottom:1px solid #1e1e1e;z-index:200;display:flex;align-items:center;
+  justify-content:space-between;padding:0 20px;}
+#hud-title{font-family:'Chakra Petch',sans-serif;font-size:.8rem;color:#444;letter-spacing:.2em;}
+#hud-zone{font-family:'Chakra Petch',sans-serif;font-size:.8rem;color:var(--gold);}
+#hud-lives{font-size:.9rem;letter-spacing:.05em;color:var(--red);}
+
+/* DATA LOG sidebar */
+#datalog{position:fixed;top:64px;right:16px;width:200px;background:rgba(8,8,8,0.96);
+  border:1px solid #1e1e1e;border-radius:8px;padding:12px;z-index:100;display:none;}
+#datalog h4{font-family:'Chakra Petch',sans-serif;color:var(--gold);font-size:.7rem;
+  letter-spacing:.12em;margin-bottom:8px;border-bottom:1px solid #1e1e1e;padding-bottom:6px;}
+.def{font-size:.75rem;color:#666;padding:5px 0;border-bottom:1px solid #131313;line-height:1.5;}
+.def.fresh{color:var(--green-b);animation:fadeUp .8s ease;}
+
+/* Container */
+.wrap{max-width:840px;margin:0 auto;padding:0 16px;}
+
+/* Header */
+.main-hdr{text-align:center;padding:72px 16px 36px;}
+.hdr-card{display:inline-block;background:var(--surf);border:1px solid var(--red-d);
+  border-radius:12px;padding:28px 36px;box-shadow:0 0 40px rgba(192,57,43,.18);max-width:560px;}
+.hdr-eye{font-family:'Chakra Petch',sans-serif;font-size:.7rem;letter-spacing:.3em;
+  color:var(--red);margin-bottom:10px;}
+.hdr-t{font-family:'Chakra Petch',sans-serif;font-size:2.6rem;font-weight:700;color:#fff;line-height:1.1;}
+.hdr-s{font-family:'Chakra Petch',sans-serif;font-size:.9rem;color:#444;letter-spacing:.15em;margin-top:6px;}
+.hdr-desc{margin-top:14px;color:#999;font-size:.9rem;line-height:1.8;}
+
+/* Zone card */
+.zone{margin-bottom:28px;border-radius:10px;overflow:hidden;border:1px solid var(--border);
+  background:var(--surf);transition:opacity .6s ease,transform .6s ease;}
+.zone.locked{display:none;}
+.zone.opening{display:block;opacity:0;transform:translateY(24px);}
+.zone.open{display:block;opacity:1;transform:translateY(0);}
+
+/* Zone headers */
+.zh{padding:14px 22px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);}
+.zt{font-family:'Chakra Petch',sans-serif;font-size:1.05rem;font-weight:700;}
+.zs{font-family:'Chakra Petch',sans-serif;font-size:.7rem;letter-spacing:.13em;}
+
+.zp .zh{background:linear-gradient(135deg,#0d1520,#0a1828);border-bottom-color:#1e3a5a;}
+.zp .zt{color:#74b9ff;} .zp .zs{color:#4a7fa5;} .zp{border-color:#1a3550;}
+
+.z1 .zh{background:linear-gradient(135deg,#180606,#250000);border-bottom-color:#7b241c;}
+.z1 .zt{color:#ff6b6b;} .z1 .zs{color:#c0392b;animation:blink 2s infinite;} .z1{border-color:#5c1a1a;}
+
+.z2 .zh{background:linear-gradient(135deg,#090915,#0b0b20);border-bottom-color:#2c3e6e;}
+.z2 .zt{color:#90caf9;} .z2 .zs{color:#2980b9;} .z2{border-color:#1a2540;}
+
+.z3 .zh{background:linear-gradient(135deg,#160a26,#100620);border-bottom-color:#6a1b9a;}
+.z3 .zt{color:#ce93d8;} .z3 .zs{color:#9c27b0;} .z3{border-color:#3e1060;}
+
+.z4 .zh{background:linear-gradient(135deg,#180d00,#261400);border-bottom-color:#a05000;}
+.z4 .zt{color:#ffb74d;} .z4 .zs{color:#e67e22;} .z4{border-color:#5a3000;}
+
+.z5 .zh{background:linear-gradient(135deg,#001408,#001e0c);border-bottom-color:#1a6e30;}
+.z5 .zt{color:#a5d6a7;} .z5 .zs{color:#27ae60;} .z5{border-color:#0e3e1a;}
+
+.z6 .zh{background:linear-gradient(135deg,#161600,#222200);border-bottom-color:#917000;}
+.z6 .zt{color:#ffd54f;} .z6 .zs{color:var(--gold);animation:blink 1.4s infinite;} 
+.z6{border-color:#5a4800;box-shadow:0 0 28px rgba(243,156,18,.12);}
+
+/* Scene image */
+.scene{width:100%;height:170px;background:#0a0a0a;border-bottom:1px solid var(--border);
+  position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.scene img{position:absolute;width:100%;height:100%;object-fit:cover;opacity:.6;}
+.scene span{position:relative;z-index:1;font-size:.8rem;color:#444;font-style:italic;
+  text-align:center;padding:10px 16px;background:rgba(0,0,0,.75);border-radius:6px;max-width:80%;}
+
+/* Zone body */
+.zb{padding:20px 22px;}
+
+/* Dialogue */
+.dlg{display:flex;gap:12px;align-items:flex-start;margin-bottom:16px;padding:12px 14px;
+  border-radius:8px;background:var(--surf2);border-left:3px solid transparent;}
+.dlg.sw{border-left-color:#3498db;} .dlg.su{border-left-color:#e91e63;}
+.dlg.sh{border-left-color:#e67e22;} .dlg.sg{border-left-color:#9c27b0;}
+.dlg.ys{border-left-color:#c0392b;} .dlg.sc{border-left-color:#00bcd4;} 
+.dlg.yg{border-left-color:#f1c40f;} .dlg.jh{border-left-color:#e84393;}
+.av{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:.9rem;font-weight:700;flex-shrink:0;border:2px solid transparent;}
+.sw .av{background:rgba(52,152,219,.15);border-color:#3498db;color:#3498db;}
+.su .av{background:rgba(233,30,99,.15);border-color:#e91e63;color:#e91e63;}
+.sh .av{background:rgba(230,126,34,.15);border-color:#e67e22;color:#e67e22;}
+.sg .av{background:rgba(156,39,176,.15);border-color:#9c27b0;color:#9c27b0;}
+.ys .av{background:rgba(192,57,43,.15);border-color:#c0392b;color:#c0392b;}
+.sc .av{background:rgba(0,188,212,.15);border-color:#00bcd4;color:#00bcd4;}
+.yg .av{background:rgba(241,196,15,.15);border-color:#f1c40f;color:#f1c40f;}
+.jh .av{background:rgba(232,67,147,.15);border-color:#e84393;color:#e84393;}
+.cn{font-family:'Chakra Petch',sans-serif;font-size:.7rem;letter-spacing:.1em;margin-bottom:5px;}
+.sw .cn{color:#3498db;} .su .cn{color:#e91e63;} .sh .cn{color:#e67e22;}
+.sg .cn{color:#9c27b0;} .ys .cn{color:#c0392b;} .sc .cn{color:#00bcd4;} 
+.yg .cn{color:#f1c40f;} .jh .cn{color:#e84393;}
+.ct{font-size:.95rem;line-height:1.65;color:#bbb;font-style:italic;}
+
+/* Story box */
+.sb{padding:14px 18px;border-radius:8px;background:rgba(255,255,255,.025);
+  border:1px solid var(--border);margin-bottom:18px;line-height:1.85;font-size:.92rem;color:#b0b0b0;}
+.dp{display:flex;align-items:baseline;gap:8px;padding:5px 0;
+  font-family:'Chakra Petch',sans-serif;font-size:.85rem;}
+.dl{color:#555;min-width:110px;} .dv{color:#e8e8e8;font-weight:600;}
+.dn{color:#555;font-size:.8rem;margin-left:8px;}
+
+/* Terminal */
+.term{background:#090909;border:1px solid #1e1e1e;border-radius:8px;padding:18px;margin-bottom:14px;}
+.th{font-family:'Chakra Petch',sans-serif;font-size:.75rem;color:var(--gold);
+  letter-spacing:.14em;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #141414;}
+
+/* Question */
+.q{padding:14px 0;border-bottom:1px solid #111;}
+.q:last-of-type{border-bottom:none;}
+.ql{font-size:.92rem;color:#ccc;margin-bottom:10px;line-height:1.75;}
+.qn{font-family:'Chakra Petch',sans-serif;font-size:.72rem;color:#444;margin-right:4px;}
+.badge{display:inline-block;font-size:.65rem;padding:1px 6px;border-radius:3px;margin-left:4px;vertical-align:middle;}
+.d1{background:#0e3e14;color:#86d98a;} .d2{background:#0d2050;color:#90caf9;}
+.d3{background:#2a0a40;color:#ce93d8;} .d4{background:#5a0a0a;color:#f48a8a;}
+.d5{background:#1a1a00;color:#ffd54f;}
+
+/* Inputs */
+.qi{background:#0e0e0e;border:1px solid #2a2a2a;color:#fff;padding:7px 12px;
+  border-radius:5px;font-family:'Chakra Petch',sans-serif;font-size:.95rem;
+  width:130px;text-align:center;transition:border-color .25s,box-shadow .25s;}
+.qi:focus{outline:none;border-color:var(--gold);box-shadow:0 0 8px rgba(243,156,18,.25);}
+.qi.ok{border-color:var(--green-b)!important;background:rgba(46,204,113,.08);}
+.qi.no{border-color:var(--red)!important;background:rgba(192,57,43,.08);}
+.qi:disabled{opacity:.5;cursor:not-allowed;}
+
+/* MC */
+.mc{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px;}
+.mb{background:var(--surf2);border:1px solid #2a2a2a;color:#aaa;padding:9px 12px;
+  border-radius:5px;cursor:pointer;font-size:.85rem;font-family:'Sarabun',sans-serif;
+  text-align:left;transition:all .18s;line-height:1.55;}
+.mb:hover:not(:disabled){background:#222;border-color:#444;}
+.mb.sel{border-color:var(--gold);background:rgba(243,156,18,.08);color:#ffd54f;}
+.mb.ok{border-color:var(--green-b)!important;background:rgba(46,204,113,.1)!important;color:#a5d6a7!important;}
+.mb.no{border-color:var(--red)!important;background:rgba(192,57,43,.08)!important;color:#f48a8a!important;}
+.mb:disabled{cursor:not-allowed;opacity:.65;}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 24px;border-radius:5px;
+  border:none;cursor:pointer;font-family:'Chakra Petch',sans-serif;font-size:.82rem;
+  font-weight:600;letter-spacing:.08em;transition:all .25s;}
+.btn-go{background:var(--red-d);color:#fff;}
+.btn-go:hover{background:var(--red);transform:translateY(-1px);box-shadow:0 4px 16px rgba(192,57,43,.4);}
+.btn-hint{background:#181818;color:#555;border:1px solid #252525;}
+.btn-hint:hover{background:#1e1e1e;color:#888;}
+.btn-done{background:var(--green);color:#fff;cursor:not-allowed;opacity:.75;}
+
+/* Messages */
+.msg{padding:9px 13px;border-radius:5px;margin-top:10px;font-size:.86rem;display:none;line-height:1.55;}
+.err{background:rgba(192,57,43,.12);border:1px solid rgba(192,57,43,.35);color:#f48a8a;}
+.ok-msg{background:rgba(46,204,113,.12);border:1px solid rgba(46,204,113,.35);color:#a5d6a7;}
+.hint-msg{background:rgba(243,156,18,.08);border:1px solid rgba(243,156,18,.25);color:#ffd54f;}
+
+/* Footer row */
+.zf{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-top:14px;}
+.lives-d{font-size:.95rem;letter-spacing:.04em;font-family:'Chakra Petch',sans-serif;}
+
+/* Knowledge banner */
+.kb{background:linear-gradient(135deg,rgba(243,156,18,.06),rgba(243,156,18,.02));
+  border:1px solid rgba(243,156,18,.22);border-radius:8px;padding:14px 18px;
+  margin-top:16px;display:none;animation:fadeUp .7s ease;}
+.kb h4{font-family:'Chakra Petch',sans-serif;color:var(--gold);font-size:.8rem;
+  letter-spacing:.1em;margin-bottom:8px;}
+.kb p{color:#b0b0b0;font-size:.9rem;line-height:1.75;margin-top:6px;}
+.formula{font-family:'Chakra Petch',sans-serif;background:#060606;border:1px solid rgba(243,156,18,.4);
+  color:var(--gold);padding:10px 18px;border-radius:5px;text-align:center;font-size:1.1rem;
+  margin:10px 0;letter-spacing:.04em;}
+
+/* Ending */
+.end-tbl{width:100%;border-collapse:collapse;font-size:.88rem;}
+.end-tbl td{padding:9px 8px;border-bottom:1px solid #131313;}
+.end-tbl td:first-child{font-family:'Chakra Petch',sans-serif;color:#444;width:110px;}
+
+/* Animations */
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+
+/* Responsive */
+@media(max-width:600px){
+  #datalog{display:none!important;} .mc{grid-template-columns:1fr;} .hdr-t{font-size:2rem;} .zb{padding:14px 14px;}
+}
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="hud-title" class="ck">KTX-101 // GEOMETRIC SURVIVAL</div>
+  <div id="hud-zone" class="ck">ZONE: <span id="cur-zone">PROLOGUE</span></div>
+  <div id="hud-lives">[ พลังชีวิต: 3/3 ]</div>
+</div>
+
+<!-- DATA LOG -->
+<div id="datalog">
+  <h4>DATA LOG บันทึกความรู้</h4>
+  <div id="def-list"></div>
+</div>
+
+<div class="wrap">
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header class="main-hdr">
+  <div class="hdr-card">
+    <div class="hdr-eye">SYSTEM BREACH // VIRUS DETECTED // KTX-101</div>
+    <div class="hdr-t">TRAIN TO BUSAN</div>
+    <div class="hdr-s">CODE: GEOMETRIC SURVIVAL</div>
+    <div class="hdr-desc">
+      ขบวนรถไฟ KTX-101 กรุงโซล → ปูซาน<br>
+      ผู้โดยสาร <span class="hw" style="color:var(--red);">1,000 ชีวิต</span> ขึ้นอยู่กับคุณ<br>
+      ค้นพบและสร้างสูตร<span class="hy"> ลำดับเรขาคณิต (Geometric Sequence)</span> เพื่อไขรหัสประตูแต่ละตู้!
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════ PROLOGUE ═══════════════ -->
+<div id="zp" class="zone zp open">
+  <div class="zh"><div class="zt">สถานีโซล — ก่อนรถออก</div><div class="zs">PROLOGUE // BOARDING</div></div>
+  <div class="scene">
+    <img src="A1.jpg" alt="A1">
+    
+  </div>
+  <div class="zb">
+    <div class="dlg sw"><div class="av">ซว</div><div><div class="cn">ซอกวู (Seok-woo) — ผู้จัดการกองทุน</div><div class="ct">"ซูอัน เดินขึ้นรถไปรอที่ที่นั่งก่อนเลยนะ พ่อคุยโทรศัพท์งานกับคิมแดรีแป๊บนึง... เดี๋ยวรีบตามเข้าไป"</div></div></div>
+    <div class="dlg su"><div class="av">ซอ</div><div><div class="cn">ซูอัน (Su-an) — ลูกสาว</div><div class="ct">"พ่อพูดแบบนี้ตลอดเลย... หนูแค่อยากไปหาแม่ที่ปูซานไวๆ"</div></div></div>
+    <div class="sb">
+      <p>ระหว่างรอ ระบบจอแสดงเวลาของชานชาลาเกิดข้อผิดพลาดรวนและแสดงตัวเลขแปลกๆ 4 ชุดขึ้นมา:</p><br>
+      <div class="dp"><span class="dl">ชุด A:</span><span class="dv">2, 4, 6, 8, 10, ...</span><span class="dn">เพิ่มขึ้นทีละ 2</span></div>
+      <div class="dp"><span class="dl">ชุด B:</span><span class="dv">2, 4, 8, 16, 32, ...</span><span class="dn">คูณเพิ่มทีละ 2</span></div>
+      <div class="dp"><span class="dl">ชุด C:</span><span class="dv">3, 6, 9, 12, 15, ...</span><span class="dn">เพิ่มขึ้นทีละ 3</span></div>
+      <div class="dp"><span class="dl">ชุด D:</span><span class="dv">1, 4, 9, 16, 25, ...</span><span class="dn">กำลังสองของลำดับ (n²)</span></div>
+      <br><p>"ลำดับที่อัตราส่วนระหว่างพจน์ขวาหารด้วยพจน์ซ้ายที่ติดกัน (aₙ₊₁ / aₙ) มีค่าคงที่ เรียกว่า <span class="hy">ลำดับเรขาคณิต (Geometric Sequence)</span>"</p>
+    </div>
+
+    <div class="term">
+      <div class="th">» TERMINAL 00 — ระบุคุณสมบัติของลำดับเรขาคณิต</div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">01.</span><span class="badge d1">Lv.1</span><br><br>จากชุด A, B, C, D — ชุดใดคือ <span class="hw">ลำดับเรขาคณิต</span>?</div>
+        <div class="mc" id="pq1o">
+          <button class="mb" onclick="pickMC('pq1',this,'A')">A) 2, 4, 6, 8, 10</button>
+          <button class="mb" onclick="pickMC('pq1',this,'B')">B) 2, 4, 8, 16, 32</button>
+          <button class="mb" onclick="pickMC('pq1',this,'C')">C) 3, 6, 9, 12, 15</button>
+          <button class="mb" onclick="pickMC('pq1',this,'D')">D) 1, 4, 9, 16, 25</button>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">02.</span><span class="badge d2">Lv.2</span><br><br>ข้อใดคือเงื่อนไขสำคัญที่ใช้ยืนยันว่าเป็นลำดับเรขาคณิต?</div>
+        <div class="mc" id="pq2o">
+          <button class="mb" onclick="pickMC('pq2',this,'A')">A) ผลต่าง aₙ₊₁ - aₙ เป็นค่าคงที่</button>
+          <button class="mb" onclick="pickMC('pq2',this,'B')">B) ผลบวกของพจน์ติดกันเป็นเลขคู่เสมอ</button>
+          <button class="mb" onclick="pickMC('pq2',this,'C')">C) ดูจากกราฟว่าตัวเลขพุ่งขึ้นเร็วแค่ไหน</button>
+          <button class="mb" onclick="pickMC('pq2',this,'D')">D) อัตราส่วนร่วม (r) ที่เกิดจาก aₙ₊₁ / aₙ ต้องมีค่าคงที่เท่ากันทุกพจน์</button>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">03.</span><span class="badge d3">Lv.3</span><br><br>ถ้า <span class="ck">2, x, 18</span> เรียงเป็นลำดับเรขาคณิต 3 พจน์ติดกัน — ค่า x ที่เป็นไปได้คือเท่าใด?<br><small class="hr">(แนวคิด: x/2 = 18/x → x² = 36)</small></div>
+        <div class="mc" id="pq3o">
+          <button class="mb" onclick="pickMC('pq3',this,'A')">A) x = 6 เท่านั้น</button>
+          <button class="mb" onclick="pickMC('pq3',this,'B')">B) x = -6 เท่านั้น</button>
+          <button class="mb" onclick="pickMC('pq3',this,'C')">C) x = ±6 (เป็นไปได้ทั้งสองค่า)</button>
+          <button class="mb" onclick="pickMC('pq3',this,'D')">D) x = 10</button>
+        </div>
+      </div>
+
+      <div class="zf">
+        <button class="btn btn-go" id="btn-zp" onclick="chk('zp')">ปิดสัญญาณขึ้นรถไฟ!</button>
+        <button class="btn btn-hint" onclick="hint('zp')">ขอคำแนะนำ (Hint)</button>
+        <span class="lives-d" id="lv-zp">[ พลังชีวิต: 3/3 ]</span>
+      </div>
+      <div id="zp-hm" class="msg hint-msg"></div>
+      <div id="zp-em" class="msg err"></div>
+    </div>
+
+    <div class="kb" id="zp-kb">
+      <h4>DATA LOG: พื้นฐานลำดับเรขาคณิต</h4>
+      <p><span class="hy">ลำดับเรขาคณิต</span> คือลำดับที่มีอัตราส่วนร่วมคงที่: <span class="ck">r = aₙ₊₁ / aₙ</span></p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ZONE 1 ═══════════════ -->
+<div id="z1" class="zone z1 locked">
+  <div class="zh"><div class="zt">โบกี้ที่ 11 — นาทีศูนย์: The Outbreak</div><div class="zs">CRITICAL</div></div>
+  <div class="scene">
+    <img src="A2.jpg" alt="A2">
+    
+  </div>
+  <div class="zb">
+    <div class="dlg sh"><div class="av">ซฮ</div><div><div class="cn">ซังฮวา (Sang-hwa) — ชายหนุ่มจอมพลัง</div><div class="ct">"เห้ย! เกิดอะไรขึ้นวะนั่น!! เฮ้!! มีคนกัดกัน ถอยไปตั้งหลักก่อน!"</div></div></div>
+    <div class="dlg sw"><div class="av">ซว</div><div><div class="cn">ซอกวู (Seok-woo)</div><div class="ct">"อย่าเพิ่งเข้าไปใกล้! ซูอัน ยึดเก้าอี้ไว้แน่นๆ... พวกเราต้องสังเกตความเร็วในการแพร่เชื้อก่อน!"</div></div></div>
+    <div class="sb">
+      <p>ผู้ติดเชื้อเริ่มกัดคนอื่นอย่างรวดเร็ว ซอกวูและซังฮวาเฝ้าสังเกตการเพิ่มจำนวนซอมบี้ (aₙ) ในทุกๆ 1 นาที:</p><br>
+      <div class="dp"><span class="dl">นาทีที่ 1 (a₁):</span><span class="dv hr">1 ตัว</span><span class="dn">= 1 × 3⁰</span></div>
+      <div class="dp"><span class="dl">นาทีที่ 2 (a₂):</span><span class="dv hr">3 ตัว</span><span class="dn">= 1 × 3¹</span></div>
+      <div class="dp"><span class="dl">นาทีที่ 3 (a₃):</span><span class="dv hr">9 ตัว</span><span class="dn">= 1 × 3²</span></div>
+      <div class="dp"><span class="dl">นาทีที่ 4 (a₄):</span><span class="dv hr">27 ตัว</span><span class="dn">= 1 × 3³</span></div>
+    </div>
+
+    <div class="term">
+      <div class="th">» TERMINAL 01 — กิจกรรมค้นพบและสร้างสูตรพจน์ทั่วไป (Guided Discovery)</div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">01.</span><span class="badge d1">Lv.1</span><br><br>จากแบบรูปการแพร่เชื้อ จำนวนซอมบี้ในนาทีที่ 5 (a₅) จะมีทั้งหมดกี่ตัว?</div>
+        <input type="number" class="qi" id="z1q1" placeholder="___">
+      </div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">02.</span><span class="badge d2">Lv.2 สร้างสูตร Step 1</span><br><br>
+          ให้นักเรียนสังเกตความสัมพันธ์ระหว่าง <span class="hw">ลำดับนาทีที่ (n)</span> กับ <span class="hy">เลขชี้กำลังของ 3</span><br>
+          สังเกตเห็นอะไร? เลขชี้กำลังของอัตราส่วนร่วม (r) สัมพันธ์กับค่าของ n อย่างไร?
+        </div>
+        <div class="mc" id="z1q2o">
+          <button class="mb" onclick="pickMC('z1q2',this,'A')">A) เลขชี้กำลังเท่ากับ n พอดี</button>
+          <button class="mb" onclick="pickMC('z1q2',this,'B')">B) เลขชี้กำลังน้อยกว่า n อยู่ 1 เสมอ (นั่นคือ n - 1)</button>
+          <button class="mb" onclick="pickMC('z1q2',this,'C')">C) เลขชี้กำลังมากกว่า n อยู่ 1 เสมอ (นั่นคือ n + 1)</button>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">03.</span><span class="badge d3">Lv.3 สร้างสูตร Step 2</span><br><br>
+          จากข้อสังเกตข้างต้น สรุปว่า<span class="hw">สูตรพจน์ทั่วไป aₙ</span> ของลำดับเรขาคณิตที่นักเรียนสร้างขึ้นคือข้อใด?
+        </div>
+        <div class="mc" id="z1q3_formulao">
+          <button class="mb" onclick="pickMC('z1q3_formula',this,'A')">A) aₙ = a₁ + (n-1)r</button>
+          <button class="mb" onclick="pickMC('z1q3_formula',this,'B')">B) aₙ = a₁ · rⁿ⁻¹</button>
+          <button class="mb" onclick="pickMC('z1q3_formula',this,'C')">C) aₙ = a₁ · rⁿ</button>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">04.</span><span class="badge d2">Lv.2</span><br><br>นำสูตรพจน์ทั่วไปที่นักเรียนเพิ่งค้นพบจากข้อ 3 มาคำนวณหาจำนวนซอมบี้ใน<span class="hw">นาทีที่ 8</span> (a₈) เมื่อ a₁=1 และ r=3</div>
+        <input type="number" class="qi" id="z1q4" placeholder="___">
+      </div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">05.</span><span class="badge d4">Lv.4</span><br><br>ซอมบี้จะมีจำนวนทะลุ <span class="hr">500 ตัว</span> เป็นครั้งแรกในนาทีที่เท่าไหร่?<br><small class="hy">(แนวคิด: ลองแทนค่า n ใน 3ⁿ⁻¹ > 500 สังเกตว่า 3⁵ = 243 และ 3⁶ = 729)</small></div>
+        <input type="number" class="qi" id="z1q5" placeholder="นาทีที่...">
+      </div>
+
+      <div class="zf">
+        <button class="btn btn-go" id="btn-z1" onclick="chk('z1')">หนีไปที่สถานีแทจอน!</button>
+        <button class="btn btn-hint" onclick="hint('z1')">ขอคำแนะนำ (Hint)</button>
+        <span class="lives-d" id="lv-z1">[ พลังชีวิต: 3/3 ]</span>
+      </div>
+      <div id="z1-hm" class="msg hint-msg"></div>
+      <div id="z1-em" class="msg err"></div>
+    </div>
+
+    <div class="kb" id="z1-kb">
+      <h4>DATA LOG: สูตรพจน์ทั่วไปที่ค้นพบ</h4>
+      <div class="formula">aₙ = a₁ · rⁿ⁻¹</div>
+      <p>เมื่อ a₁ คือพจน์แรก, r คืออัตราส่วนร่วม และ n คือลำดับพจน์</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ZONE 2 ═══════════════ -->
+<div id="z2" class="zone z2 locked">
+  <div class="zh"><div class="zt">สถานีแทจอน & อุโมงค์มืด: The Separation</div><div class="zs">ZONE 2 // STEALTH</div></div>
+  <div class="scene">
+    <img src="A3.jpg" alt="A3">
+   
+  </div>
+  <div class="zb">
+    <div class="dlg yg"><div class="av">ยก</div><div><div class="cn">ยองกุก (Yeong-guk) — นักเบสบอลมัธยมปลาย</div><div class="ct">"แฮ่ก... แฮ่ก... หนีทหารซอมบี้ทันฉิวเฉียดเลย! แต่เดี๋ยวนะ... กลุ่มเราแตกกันหมดเลยนี่นา!"</div></div></div>
+    <div class="dlg sg"><div class="av">ซก</div><div><div class="cn">ซองกยอง (Seong-kyeong) — ภรรยาตั้งครรภ์ของซังฮวา</div><div class="ct">"พี่ซังฮวา!!... เขาอยู่อีกตู้นึง! ตอนนี้ฉันกับซูอันติดอยู่ในห้องน้ำตู้ 13..."</div></div></div>
+    <div class="sb">
+      <p>หลังหนีตายจากสถานีแทจอน ซอกวู ซังฮวา และยองกุก ติดอยู่ที่ตู้ 9 ส่วนซูอันและซองกยองติดอยู่ที่ห้องน้ำตู้ 13 พวกเขาต้องฝ่าดงซอมบี้ไปช่วยครอบครัวให้ได้!</p>
+      <p>โชคดีที่รถไฟวิ่งเข้า <span class="hw">อุโมงค์มืดมิด</span> ซอมบี้จะมองไม่เห็นและตามเสียงอย่างเดียว ซอกวูพบว่าหากโยนโทรศัพท์ล่อไปไกลๆ ความสนใจของซอมบี้จะ<span class="hg">ลดลงครึ่งหนึ่งในทุกๆ 1 เมตร</span>:</p><br>
+      <div class="dp"><span class="dl">ระยะ 1 เมตร:</span><span class="dv hr">ซอมบี้ตาม 64 ตัว</span></div>
+      <div class="dp"><span class="dl">ระยะ 2 เมตร:</span><span class="dv" style="color:#ff9999">ซอมบี้ตาม 32 ตัว</span></div>
+      <div class="dp"><span class="dl">ระยะ 3 เมตร:</span><span class="dv" style="color:#ffcccc">ซอมบี้ตาม 16 ตัว</span></div>
+      <br><p>นี่คือลำดับเรขาคณิตที่มี r = 1/2 (ซึ่ง <span class="hb">0 &lt; r &lt; 1</span>) ทำให้ค่า<span class="hg">ลดลงเรื่อยๆ</span></p>
+    </div>
+
+    <div class="term">
+      <div class="th">» TERMINAL 02 — ลำดับเมื่อ r เป็นเศษส่วน (0 &lt; r &lt; 1)</div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">01.</span><span class="badge d1">Lv.1</span><br><br>หากขว้างโทรศัพท์ไปไกล <span class="hw">6 เมตร</span> (พจน์ที่ 6) จะมีซอมบี้หันตามกี่ตัว? (a₁=64, r=1/2)</div>
+        <input type="number" class="qi" id="z2q1" placeholder="___">
+      </div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">02.</span><span class="badge d3">Lv.3</span><br><br>ซอกวูต้องขว้างโทรศัพท์ไปไกลอย่างน้อยกี่เมตร (หา n) จำนวนซอมบี้ที่ตามจึงจะ<span class="hg">น้อยกว่า 1 ตัว</span> (ปลอดภัย 100%)?<br><small class="hy">(แนวคิด: 64 · (1/2)ⁿ⁻¹ &lt; 1 → 2ⁿ⁻¹ &gt; 64 → 2⁶ = 64)</small></div>
+        <input type="number" class="qi" id="z2q2" placeholder="ระยะ...">
+      </div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">03.</span><span class="badge d2">Lv.2 Concept Check</span><br><br>จากลำดับ aₙ ที่มี 0 &lt; r &lt; 1 หากระยะทาง n เพิ่มขึ้นไปเรื่อยๆ จนถึงอนันต์ จำนวนซอมบี้ที่ตามเสียง (aₙ) จะเข้าใกล้ค่าใด?</div>
+        <div class="mc" id="z2q3o">
+          <button class="mb" onclick="pickMC('z2q3',this,'A')">A) เข้าใกล้ 0</button>
+          <button class="mb" onclick="pickMC('z2q3',this,'B')">B) เข้าใกล้ 1</button>
+          <button class="mb" onclick="pickMC('z2q3',this,'C')">C) ติดลบไปเรื่อยๆ</button>
+          <button class="mb" onclick="pickMC('z2q3',this,'D')">D) เข้าใกล้อนันต์</button>
+        </div>
+      </div>
+
+      <div class="zf">
+        <button class="btn btn-go" id="btn-z2" onclick="chk('z2')">ย่องผ่านอุโมงค์มืดไปที่ตู้ 13!</button>
+        <button class="btn btn-hint" onclick="hint('z2')">ขอคำแนะนำ (Hint)</button>
+        <span class="lives-d" id="lv-z2">[ พลังชีวิต: 3/3 ]</span>
+      </div>
+      <div id="z2-hm" class="msg hint-msg"></div>
+      <div id="z2-em" class="msg err"></div>
+    </div>
+
+    <div class="kb" id="z2-kb">
+      <h4>DATA LOG: ลำดับที่ลดลง (Decreasing Sequence)</h4>
+      <p>เมื่ออัตราส่วนร่วม 0 &lt; r &lt; 1 ค่าของพจน์ในลำดับจะลดลงเรื่อยๆ และเมื่อ n มากขึ้น พจน์ที่ n (aₙ) จะมีค่าเข้าใกล้ 0 เสมอ</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ZONE 3 ═══════════════ -->
+<div id="z3" class="zone z3 locked">
+  <div class="zh"><div class="zt">ฝ่าดงซอมบี้จากตู้ 9 สู่ตู้ 13: Crossing Cars</div><div class="zs">ZONE 3 // CROSS THE CARS</div></div>
+  <div class="scene">
+    <img src="A4.jpg" alt="A4">
+
+  </div>
+  <div class="zb">
+    <div class="dlg sh"><div class="av">ซฮ</div><div><div class="cn">ซังฮวา</div><div class="ct">"เอาเทปพันแขนกันรอยกัดให้แน่น! ยองกุก นายตีสกัดด้านหลัง ฉันกับซอกวูจะชนเปิดทางข้างหน้าเอง!"</div></div></div>
+    <div class="dlg jh"><div class="av">จฮ</div><div><div class="cn">จินฮี (Jin-hee) — เชียร์ลีดเดอร์สาว (อยู่ตู้อื่น)</div><div class="ct">"ยองกุก... ระวังตัวด้วยนะ ฉันจะภาวนาให้!"</div></div></div>
+    <div class="sb">
+      <p>ระหว่างฝ่าไปทีละตู้ ยองกุกคำนวณจำนวนซอมบี้ในแต่ละตู้และพบว่ามันจัดเรียงเป็น<span class="hy">ลำดับเรขาคณิต</span> แต่เขาเห็นข้อมูลแค่บางตู้เท่านั้น:</p><br>
+      <p>ตู้ที่ 2 (พจน์ที่ 2) มีซอมบี้ <span class="hr">12 ตัว</span> (a₂ = 12)</p>
+      <p>ตู้ที่ 5 (พจน์ที่ 5) มีซอมบี้ <span class="hr">96 ตัว</span> (a₅ = 96)</p>
+      <br><p>ยองกุกต้องคำนวณจำนวนซอมบี้ในตู้ต่อๆ ไปเพื่อวางแผนการโจมตี!</p>
+    </div>
+
+    <div class="term">
+      <div class="th">» TERMINAL 03 — การหาค่า a₁ และ r จากสมการคู่</div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">01.</span><span class="badge d4">Lv.4</span><br><br>จาก a₂ = 12 และ a₅ = 96 จงหา <span class="hw">อัตราส่วนร่วม (r)</span> และ <span class="hw">พจน์แรก (a₁)</span><br><small class="hy">(แนวคิด: นำมาหารกัน a₅ / a₂ = r³ → 96/12 = 8 → r³ = 8)</small></div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          r = <input type="number" class="qi" id="z3q1r" placeholder="r" style="width:80px;">
+          a₁ = <input type="number" class="qi" id="z3q1a" placeholder="a₁" style="width:80px;">
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">02.</span><span class="badge d3">Lv.3</span><br><br>เมื่อรู้ a₁ และ r แล้ว ตู้ที่ 7 (a₇) จะมีซอมบี้กี่ตัว?</div>
+        <input type="number" class="qi" id="z3q2" placeholder="___">
+      </div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">03.</span><span class="badge d5">Lv.5 ลำดับที่สลับทิศทาง (r ติดลบ)</span><br><br>ขณะฝ่าตู้ รถไฟเกิดการกระชากอย่างรุนแรง ระยะไถลตัวของซอมบี้เรียงเป็นลำดับที่สลับไปมา (เดินหน้าเป็นบวก ถอยหลังเป็นลบ) กำหนดลำดับเรขาคณิตมี a₃ = 18 และ a₆ = -486<br>จงหาค่า a₁, r, และ <span class="hw">a₈</span><br><small class="hy">(แนวคิด: r³ = -486 / 18 = -27 → r = -3)</small></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          a₁ = <input type="number" class="qi" id="z3q3a" placeholder="a₁" style="width:75px;">
+          r = <input type="number" class="qi" id="z3q3r" placeholder="r" style="width:75px;">
+          a₈ = <input type="number" class="qi" id="z3q3c" placeholder="a₈" style="width:95px;">
+        </div>
+      </div>
+
+      <div class="zf">
+        <button class="btn btn-go" id="btn-z3" onclick="chk('z3')">ฟาดซอมบี้ให้ราบ ทะลวงไปตู้ 13!</button>
+        <button class="btn btn-hint" onclick="hint('z3')">ขอคำแนะนำ (Hint)</button>
+        <span class="lives-d" id="lv-z3">[ พลังชีวิต: 3/3 ]</span>
+      </div>
+      <div id="z3-hm" class="msg hint-msg"></div>
+      <div id="z3-em" class="msg err"></div>
+    </div>
+
+    <div class="kb" id="z3-kb">
+      <h4>DATA LOG: การแก้สมการหา a₁ และ r</h4>
+      <p>เมื่อรู้พจน์ 2 พจน์ใดๆ ให้นำพจน์ที่มากกว่าตั้งหารด้วยพจน์ที่น้อยกว่า: <span class="ck">aₘ / aₙ = rᵐ⁻ⁿ</span></p>
+      <p>หากอัตราส่วนร่วม <span class="hr">r ติดลบ</span> ลำดับจะสลับเครื่องหมายบวก-ลบสลับกันไปมาทุกพจน์</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ZONE 4 ═══════════════ -->
+<div id="z4" class="zone z4 locked">
+  <div class="zh"><div class="zt">ประตูตู้ 15 — การหลอกลวง: The Sacrifice</div><div class="zs">ZONE 4 // BETRAYAL</div></div>
+  <div class="scene">
+    <img src="A5.jpg" alt="A5">
+
+  </div>
+  <div class="zb">
+    <div class="dlg ys"><div class="av">ยซ</div><div><div class="cn">ยงซอก (Yong-suk) — COO ผู้เห็นแก่ตัว</div><div class="ct">"อย่าเปิดประตูนะ! พวกมันมาจากตู้ติดเชื้อ เอาเชือกมามัดล็อกประตูไว้เร็วเข้า!!"</div></div></div>
+    <div class="dlg sh"><div class="av">ซฮ</div><div><div class="cn">ซังฮวา — (ถูกกัดที่มือแล้ว แต่ยังฝืนใช้ตัวดุนประตูกันฝูงซอมบี้)</div><div class="ct">"ไอ้เลวเอ๊ย!! เปิดเดี๋ยวนี้! ภรรยาชั้นท้องอยู่นะเว้ย!... ซอกวู รีบพังรหัสปลดล็อกประตูซะ พาเธอไป!!"</div></div></div>
+    <div class="sb">
+      <p>พวกเขาฝ่ามาจนถึงตู้ 15 และช่วยซูอันกับซองกยองได้แล้ว แต่ประตูนิรภัยกลับถูกยงซอกล็อกรหัสผ่านจากด้านใน! ซังฮวาถูกซอมบี้กัด เขาตัดสินใจเอาตัวดันประตูถ่วงเวลาไว้ให้ <span class="hr">คุณยายอินกิล (In-gil) ถูกทิ้งไว้กลางวงซอมบี้</span> ขณะที่คุณยายจงกิล (Jong-gil) ได้แต่มองพี่สาวตัวเองผ่านกระจกด้วยความสิ้นหวัง</p>
+      <p>รหัสฉุกเฉินในการเปิดประตูนิรภัยคือการแก้สมการของ <span class="hw">สมบัติ 3 พจน์ติดกันของลำดับเรขาคณิต (Geometric Mean)</span></p>
+    </div>
+
+    <div class="term">
+      <div class="th">» TERMINAL 04 — สมบัติของ 3 พจน์ติดกัน (Geometric Mean)</div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">01.</span><span class="badge d2">Lv.2</span><br><br>ถ้า a, b, c เรียงเป็นลำดับเรขาคณิต เหตุใดสมการ <span class="hw">b² = ac</span> จึงเป็นจริงเสมอ?</div>
+        <div class="mc" id="z4q1o">
+          <button class="mb" onclick="pickMC('z4q1',this,'A')">A) เพราะ b คือค่าเฉลี่ยเลขคณิตของ a และ c</button>
+          <button class="mb" onclick="pickMC('z4q1',this,'B')">B) เป็นเพียงการตั้งชื่อสูตร ไม่สามารถพิสูจน์ได้</button>
+          <button class="mb" onclick="pickMC('z4q1',this,'C')">C) เพราะอัตราส่วนร่วม r = b/a ต้องเท่ากับ c/b เมื่อคูณไขว้จึงได้ b² = ac</button>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">02.</span><span class="badge d3">Lv.3</span><br><br>ถ้ารหัสประตูคือค่า x ที่ทำให้ <span class="ck">3, x, 27</span> เป็นลำดับเรขาคณิต 3 พจน์ติดกัน — ค่า x ที่เป็นไปได้ทั้งหมดคือข้อใด?</div>
+        <div class="mc" id="z4q2o">
+          <button class="mb" onclick="pickMC('z4q2',this,'A')">A) x = 9 และ x = -9</button>
+          <button class="mb" onclick="pickMC('z4q2',this,'B')">B) x = 9 เท่านั้น</button>
+          <button class="mb" onclick="pickMC('z4q2',this,'C')">C) x = 15</button>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">03.</span><span class="badge d4">Lv.4 แฮกรหัส!</span><br><br>ปลดล็อกขั้นสุดท้าย: กำหนดให้พจน์ 3 พจน์คือ <span class="ck">x-2, 2x, 4x+16</span> จงหาค่าของ x ที่มากกว่าศูนย์ เพื่อเปิดประตู!<br><small class="hy">(แนวคิด: ใช้ b² = ac → (2x)² = (x-2)(4x+16) → 4x² = 4x² + 8x - 32 → 8x = 32)</small></div>
+        <input type="number" class="qi" id="z4q3" placeholder="x = ___">
+      </div>
+
+      <div class="zf">
+        <button class="btn btn-go" id="btn-z4" onclick="chk('z4')">รหัสผ่านถูกต้อง! พังประตูเข้าไป!</button>
+        <button class="btn btn-hint" onclick="hint('z4')">ขอคำแนะนำ (Hint)</button>
+        <span class="lives-d" id="lv-z4">[ พลังชีวิต: 3/3 ]</span>
+      </div>
+      <div id="z4-hm" class="msg hint-msg"></div>
+      <div id="z4-em" class="msg err"></div>
+    </div>
+
+    <div class="kb" id="z4-kb">
+      <h4>DATA LOG: ตัวกลางเรขาคณิต (Geometric Mean)</h4>
+      <p>พจน์ตรงกลางของ 3 พจน์ที่ติดกันในลำดับเรขาคณิต (a, b, c) จะมีความสัมพันธ์คือ <span class="hy">b² = ac</span></p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ZONE 5 ═══════════════ -->
+<div id="z5" class="zone z5 locked">
+  <div class="zh"><div class="zt">ท้ายขบวน — สายโทรศัพท์: The Truth</div><div class="zs">ZONE 5 // CONFESSION</div></div>
+  <div class="scene">
+    <img src="A6.jpg" alt="A6">
+   
+  </div>
+  <div class="zb">
+    <div class="dlg sc"><div class="av">คด</div><div><div class="cn">คิมแดรี (Kim Dae-ri) — พนักงานกองทุนของซอกวู</div><div class="ct">"หัวหน้าซอกวูครับ... เราเพิ่งเช็กข่าว ไวรัสบ้านั่นมันรั่วมาจาก YS Biotech... บริษัทวิจัยที่เราช่วยปั่นหุ้นช่วยไม่ให้มันล้มละลายเมื่อต้นปี... หัวหน้าครับ พวกเราเป็นคนทำให้เกิดนรกนี่ใช่ไหม..."</div></div></div>
+    <div class="dlg sw"><div class="av">ซว</div><div><div class="cn">ซอกวู — ช็อกและรู้สึกผิดสุดหัวใจ</div><div class="ct">"...คิมแดรี มันไม่ใช่ความผิดนายหรอก ทำหน้าที่ของนายต่อไปนะ" <em>(วางสาย น้ำตาไหลเมื่อรู้ว่าความสูญเสียทั้งหมดเกิดจากน้ำมือเขาเอง)</em></div></div></div>
+    <div class="sb">
+      <p><span class="hy">คุณยายจงกิลแค้นใจคนเห็นแก่ตัว จึงเปิดประตูกวาดล้างตู้ 15</span> ซอกวูพาซูอันและซองกยองหนีรอดมาถึงโบกี้ท้ายสุดได้สำเร็จ ทว่าหลังได้รับสายโทรศัพท์ เขาต้องรีบคำนวณข้อมูลเงินลงทุนที่ก่อวิกฤตนี้เพื่อส่งให้รัฐบาล</p>
+      <p>กองทุนของซอกวูอัดฉีดเงินให้ YS Biotech: <span class="hw">ปีแรก 2 ล้านบาท</span> และเพิ่มเงินลงทุนเป็น <span class="hw">3 เท่าในทุกๆ ปี</span></p>
+    </div>
+
+    <div class="term">
+      <div class="th">» TERMINAL 05 — โจทย์ปัญหาการลงทุนและการประยุกต์ aₙ</div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">01.</span><span class="badge d2">Lv.2</span><br><br>จากข้อมูลการลงทุน (a₁=2, r=3) ในปีที่ 5 (a₅) กองทุนอัดฉีดเงินไปเท่าไหร่?</div>
+        <input type="number" class="qi" id="z5q1" placeholder="___ ล้านบาท">
+      </div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">02.</span><span class="badge d4">Lv.4</span><br><br>ในปีใดที่ยอดเงินอัดฉีดของปีนั้นพุ่งสูงถึง <span class="hr">4,374 ล้านบาท</span>?<br><small class="hy">(แนวคิด: 2 · 3ⁿ⁻¹ = 4374 → 3ⁿ⁻¹ = 2187 → 3⁷ = 2187)</small></div>
+        <input type="number" class="qi" id="z5q2" placeholder="ปีที่ ___">
+      </div>
+
+      <div class="zf">
+        <button class="btn btn-go" id="btn-z5" onclick="chk('z5')">ส่งข้อมูลให้รัฐบาล แล้วลุกขึ้นสู้ต่อ!</button>
+        <button class="btn btn-hint" onclick="hint('z5')">ขอคำแนะนำ (Hint)</button>
+        <span class="lives-d" id="lv-z5">[ พลังชีวิต: 3/3 ]</span>
+      </div>
+      <div id="z5-hm" class="msg hint-msg"></div>
+      <div id="z5-em" class="msg err"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ZONE 6 BOSS ═══════════════ -->
+<div id="z6" class="zone z6 locked">
+  <div class="zh"><div class="zt">หัวรถจักร — ซอมบี้ยงซอก: The Final Engine</div><div class="zs">FINAL BOSS // DECRYPT</div></div>
+  <div class="scene">
+    <img src="A7.jpg" alt="A7">
+
+  </div>
+  <div class="zb">
+    <div class="dlg ys"><div class="av">ยซ</div><div><div class="cn">ยงซอก (ซอมบี้)</div><div class="ct">"อั๊ค... พาฉันกลับบ้านที... แม่รอฉันอยู่ที่บ้าน..." <em>(ตาขาวโพลน พุ่งเข้ากัดซอกวูอย่างบ้าคลั่ง!)</em></div></div></div>
+    <div class="dlg sw"><div class="av">ซว</div><div><div class="cn">ซอกวู — เอามือซ้ายกันฟันซอมบี้จนถูกกัด!</div><div class="ct">"ซูอัน! ซองกยอง! เข้าไปในห้องควบคุม! พ่อจัดการเจ้านี่เอง!"</div></div></div>
+
+    <div class="sb" style="border-color:rgba(243,156,18,.2);background:rgba(243,156,18,.02);">
+      <p>ซอกวูผลักยงซอกตกลงจากรถไฟสำเร็จ แต่เขาถูกกัดแล้ว ไวรัสกำลังยึดร่างเขาอย่างรวดเร็ว ซอกวูมีเวลาเพียงเสี้ยวนาทีในการสอนซองกยองปลดเบรกระบบหัวรถจักร ซึ่งถูกเข้ารหัสด้วยความรู้ลำดับเรขาคณิตขั้นสูง!</p>
+    </div>
+
+    <div class="term" style="border-color:rgba(243,156,18,.2);">
+      <div class="th" style="color:var(--gold);border-bottom-color:rgba(243,156,18,.15);">» TERMINAL BOSS — รหัสผ่านปลดเบรกหัวรถจักรขั้นสุดท้าย</div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">(ก)</span><span class="badge d3">Lv.3</span><br><br>กำหนดให้รหัสผ่านซ่อนอยู่ในลำดับเรขาคณิตที่มี a₄ = 24 และ a₇ = 192<br>จงหาค่า <span class="hw">r</span> และ <span class="hw">a₁</span></div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          r = <input type="number" class="qi" id="z6q1r" placeholder="r" style="width:80px;">
+          a₁ = <input type="number" class="qi" id="z6q1a" placeholder="a₁" style="width:80px;">
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">(ข)</span><span class="badge d4">Lv.4</span><br><br>จากค่า a₁, r ที่หาได้ หากใส่ค่าพลังงาน aₙ ลงในเครื่องยนต์ ค่าพลังงานจะพุ่งเกิน <span class="hr">1,500 หน่วย</span> เป็นครั้งแรกในวินาทีที่ n เท่าไหร่?<br><small class="hy">(แนวคิด: 3 · 2ⁿ⁻¹ > 1500 → 2ⁿ⁻¹ > 500 → 2⁸ = 256, 2⁹ = 512)</small></div>
+        <input type="number" class="qi" id="z6q2" placeholder="วินาทีที่ ___">
+      </div>
+
+      <div class="q">
+        <div class="ql"><span class="qn">(ค)</span><span class="badge d5">Lv.5 ปลดล็อกความเร็วสูงสุด</span><br><br>ระบบปรับลดความร้อนเครื่องยนต์เรียงเป็นลำดับเรขาคณิตชุดใหม่ โดยเริ่มที่ความร้อน a₁ = 81 และลดลงด้วยอัตราส่วน r = 1/3<br>จงหาความร้อนในวินาทีที่ 6 (a₆) เพื่อดึงคันเร่ง!<br><small class="hy">(แนวคิด: a₆ = 81 · (1/3)⁵ = 81 / 243)</small></div>
+        <input type="number" class="qi" id="z6q3" step="0.01" placeholder="a₆ = (ทศนิยม 2 ตำแหน่ง)">
+      </div>
+
+      <div class="zf">
+        <button class="btn" id="btn-z6" onclick="chk('z6')" style="background:linear-gradient(135deg,#917000,#5a4800);color:#fff;">ปลดล็อกเบรก! ให้รถไฟพุ่งสู่ปูซาน!</button>
+        <button class="btn btn-hint" onclick="hint('z6')">ขอคำแนะนำ (Hint)</button>
+        <span class="lives-d" id="lv-z6">[ พลังชีวิต: 3/3 ]</span>
+      </div>
+      <div id="z6-hm" class="msg hint-msg"></div>
+      <div id="z6-em" class="msg err"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ENDING ═══════════════ -->
+<div id="zend" class="zone locked" style="border-color:#1e6e30;box-shadow:0 0 36px rgba(39,174,96,.15);">
+  <div class="zh" style="background:linear-gradient(135deg,#081e0e,#0e3018);border-bottom-color:#1e6e30;">
+    <div class="zt" style="color:#a5d6a7;">ภารกิจสำเร็จ — MISSION COMPLETE</div>
+    <div class="zs" style="color:#27ae60;">YOU SURVIVED // BUSAN</div>
+  </div>
+  <div class="zb" style="text-align:center;">
+    <h2 style="font-family:'Chakra Petch',sans-serif;font-size:1.6rem;color:#a5d6a7;margin-bottom:14px;margin-top:10px;">ยินดีด้วย! ซูอันและซองกยองถึงปูซานปลอดภัย</h2>
+    
+    <!-- แทรกรูปฉากจบที่นี่ -->
+    <div class="scene" style="margin-bottom: 20px;">
+      <img src="A8.jpg" alt="A8">
+
+    </div>
+
+    <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;padding:16px;max-width:500px;margin:0 auto 20px;font-size:.9rem;line-height:1.85;color:#888;text-align:left;">
+      <p>หลังจากสอนวิธีคุมรถไฟ ซอกวูอุ้มลูกสาวเป็นครั้งสุดท้าย เขาล็อกประตูขังตัวเองไว้นอกห้องควบคุม ยืนพิงท้ายขบวนพร้อมนึกถึงตอนที่อุ้มซูอันแรกเกิด... ก่อนจะทิ้งตัวลงจากรถไฟไปตลอดกาลเพื่อไม่ให้ทำร้ายคนที่เขารัก</p>
+      <p style="margin-top:10px;">รถไฟวิ่งมาถึงอุโมงค์ปลายทางปูซาน ซูอันและซองกยองเดินประคองกันออกมา ทหารเขตกักกันเล็งปืนเตรียมพร้อมจากระยะไกล...</p>
+      <p style="margin-top:8px;color:#a5d6a7;font-style:italic;"> ซูอันเริ่มขับร้องเพลงที่ตั้งใจจะร้องให้พ่อฟังด้วยน้ำตานองหน้า</p>
+      <p style="margin-top:8px;">เสียงเพลงอันบริสุทธิ์ทะลุความมืด ทหารรู้ว่าเป็นผู้รอดชีวิตจึงลดปืนลงและเข้าช่วยเหลือทันที... พวกเธอรอดแล้ว!</p>
+    </div>
+    <p style="color:#555;max-width:480px;margin:0 auto 28px;line-height:1.85;font-size:.88rem;">
+      คุณได้ฝ่าฟันวิกฤตทั้งหมดด้วยพลังของการเรียนรู้ <span style="color:#ffd54f;font-family:'Chakra Petch',sans-serif;">ลำดับเรขาคณิต (aₙ)</span>
+    </p>
+    <div style="background:#090909;border:1px solid #1a1a1a;border-radius:8px;padding:20px;max-width:560px;margin:0 auto 24px;text-align:left;">
+      <h3 style="font-family:'Chakra Petch',sans-serif;color:var(--gold);margin-bottom:14px;font-size:.78rem;letter-spacing:.1em;">DATA LOG สรุปความรู้</h3>
+      <table class="end-tbl">
+        <tr><td>r &gt; 1</td><td style="color:#f48a8a;">ลำดับ<strong style="color:#fff">เพิ่มขึ้น</strong>แบบทวีคูณ </td></tr>
+        <tr><td>0 &lt; r &lt; 1</td><td style="color:#90caf9;">ลำดับ<strong style="color:#fff">ลดลง</strong>เข้าใกล้ 0 </td></tr>
+        <tr><td>r &lt; 0</td><td style="color:#ce93d8;">ลำดับ<strong style="color:#fff">สลับเครื่องหมาย</strong>บวก-ลบ </td></tr>
+        <tr><td>aₙ</td><td style="color:#ffd54f;font-family:'Chakra Petch',sans-serif;">a₁ · rⁿ⁻¹ (สูตรพจน์ทั่วไปที่ค้นพบ)</td></tr>
+        
+      </table>
+    </div>
+    <p style="color:#444;font-size:.82rem;font-style:italic;"> KTX-101 Train to Bhusan </p>
+  </div>
+</div>
+
+</div><!-- end .wrap -->
+
+<script>
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+const S = {
+  lives:{ zp:3, z1:3, z2:3, z3:3, z4:3, z5:3, z6:3 },
+  hint:{ zp:0, z1:0, z2:0, z3:0, z4:0, z5:0, z6:0 },
+  mc:{}, dead:{}
+};
+
+// ─────────────────────────────────────────────
+// ANSWERS (Only a_n logic)
+// ─────────────────────────────────────────────
+const ANS = {
+  zp:{ pq1:'B', pq2:'D', pq3:'C' },
+  z1:{ z1q1:'81', z1q2:'B', z1q3_formula:'B', z1q4:'2187', z1q5:'7' },
+  z2:{ z2q1:'2', z2q2:'8', z2q3:'A' },
+  z3:{ z3q1r:'2', z3q1a:'6', z3q2:'384', z3q3a:'2', z3q3r:'-3', z3q3c:'-4374' },
+  z4:{ z4q1:'C', z4q2:'A', z4q3:'4' },
+  z5:{ z5q1:'162', z5q2:'8' },
+  z6:{ z6q1r:'2', z6q1a:'3', z6q2:'10', z6q3:'0.33' }
+};
+
+// ─────────────────────────────────────────────
+// HINTS
+// ─────────────────────────────────────────────
+const HINTS = {
+  zp:['[คำแนะนำ]: ลำดับเรขาคณิตต้องมีอัตราส่วนระหว่างพจน์ติดกัน (aₙ₊₁/aₙ) เท่ากันลองหารดูครับ',
+      '[คำแนะนำ]: ชุด B → 4/2=2, 8/4=2, 16/8=2 | ข้อ 3: x² = 2×18 = 36 → x = ±6',
+      '[เฉลย]: Q1=B, Q2=D, Q3=C'],
+  z1:['[คำแนะนำ]: ลองสังเกตเลขชี้กำลังของ 3 ในแต่ละพจน์ a₁=3⁰, a₂=3¹, a₃=3²',
+      '[คำแนะนำ]: เลขชี้กำลังจะเท่ากับ n-1 ดังนั้นสูตรคือ aₙ = a₁ · rⁿ⁻¹',
+      '[เฉลย]: Q1=81, Q2=B, Q3(สูตร)=B, Q4=2187, Q5=7'],
+  z2:['[คำแนะนำ]: Q1: a₆ = 64 × (1/2)⁵ = 64 × 1/32 = 2 | Q2: 2ⁿ⁻¹ > 64 → n-1 > 6 → n=8',
+      '[เฉลย]: Q1=2, Q2=8, Q3=A'],
+  z3:['[คำแนะนำ]: Q1: r³ = 96/12 = 8 → r=2, a₁=6 | Q3: r³ = -486/18 = -27 → r=-3',
+      '[คำแนะนำ]: Q2: 6×2⁶ = 384 | Q3: a₁ = 2, a₈ = 2×(-3)⁷ = -4374',
+      '[เฉลย]: Q1(r=2, a₁=6), Q2=384, Q3(a₁=2, r=-3, a₈=-4374)'],
+  z4:['[คำแนะนำ]: Q1: การคูณไขว้ b/a = c/b ได้ b² = ac | Q3: 8x = 32 → x=4',
+      '[เฉลย]: Q1=C, Q2=A, Q3=4'],
+  z5:['[คำแนะนำ]: Q1: a₅ = 2 × 3⁴ = 162 | Q2: 3ⁿ⁻¹ = 2187 → n-1=7 → n=8',
+      '[เฉลย]: Q1=162, Q2=8'],
+  z6:['[คำแนะนำ]: Q1: r³ = 192/24 = 8 → r=2, a₁=3 | Q2: 3 × 2ⁿ⁻¹ > 1500 → 2ⁿ⁻¹ > 500 → 2⁹=512 → n=10',
+      '[คำแนะนำ]: Q3: 81 × (1/3)⁵ = 81 / 243 = 1/3 = 0.33',
+      '[เฉลย]: Q1(r=2, a₁=3), Q2=10, Q3=0.33']
+};
+
+// ─────────────────────────────────────────────
+// NEXT ZONE MAP
+// ─────────────────────────────────────────────
+const NEXT = { zp:'z1', z1:'z2', z2:'z3', z3:'z4', z4:'z5', z5:'z6', z6:'zend' };
+const ZONE_NAMES = { z1:'ZONE 1', z2:'ZONE 2', z3:'ZONE 3', z4:'ZONE 4', z5:'ZONE 5', z6:'ZONE 6 BOSS', zend:'CLEARED' };
+const KB_IDS = { zp:'zp-kb', z1:'z1-kb', z2:'z2-kb', z3:'z3-kb', z4:'z4-kb', z5:'z5-kb' };
+const CODEX_ITEMS = {
+  zp:['อัตราส่วนร่วม: r = aₙ₊₁/aₙ'],
+  z1:['สูตรที่ค้นพบ: aₙ = a₁·rⁿ⁻¹'],
+  z2:['0 < r < 1 ค่าลำดับลดลงเรื่อยๆ'],
+  z3:['r < 0 สลับเครื่องหมาย บวกลบ'],
+  z4:['ตัวกลางเรขาคณิต: b² = ac'],
+  z5:['แก้สมการ n ด้วยเลขยกกำลัง'],
+  z6:['[ผ่าน] ถอดรหัสหัวรถจักรสมบูรณ์']
+};
+
+// ─────────────────────────────────────────────
+// MC PICK
+// ─────────────────────────────────────────────
+function pickMC(id, btn, val) {
+  document.querySelectorAll('#'+id+'o .mb').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  S.mc[id] = val;
+}
+
+// ─────────────────────────────────────────────
+// HINTS
+// ─────────────────────────────────────────────
+function hint(zid) {
+  const lv = S.hint[zid], arr = HINTS[zid];
+  const el = document.getElementById(zid+'-hm');
+  el.textContent = lv < arr.length ? arr[lv] : '[ระบบ]: ใช้คำแนะนำครบหมดแล้ว!';
+  el.style.display = 'block';
+  if (lv < arr.length) S.hint[zid]++;
+}
+
+// ─────────────────────────────────────────────
+// CHECKING
+// ─────────────────────────────────────────────
+function numOK(id, correct) {
+  const el = document.getElementById(id); if(!el) return false;
+  const v = el.value.trim(); if(!v) return false;
+  return Math.abs(parseFloat(v) - parseFloat(correct)) < 0.05; // allow margin for 0.33
+}
+
+function mcOK(id, correct) { return S.mc[id] === correct; }
+
+function markNum(id, ok) {
+  const el = document.getElementById(id); if(!el) return;
+  el.classList.remove('ok','no'); el.classList.add(ok?'ok':'no');
+}
+
+function markMC(qid, correct) {
+  document.querySelectorAll('#'+qid+'o .mb').forEach(btn=>{
+    btn.disabled=true;
+    const v = btn.getAttribute('onclick').match(/'([A-D])'\)/)?.[1];
+    if(v===correct) btn.classList.add('ok');
+    else if(v===S.mc[qid] && S.mc[qid]!==correct) btn.classList.add('no');
+  });
+}
+
+// ─────────────────────────────────────────────
+// UNLOCK
+// ─────────────────────────────────────────────
+function unlockZone(zid) {
+  const el = document.getElementById(zid); if(!el) return;
+  el.classList.remove('locked');
+  el.classList.add('opening');
+  setTimeout(()=>{ el.classList.remove('opening'); el.classList.add('open'); },50);
+  setTimeout(()=>{ el.scrollIntoView({behavior:'smooth',block:'start'}); },400);
+  if(ZONE_NAMES[zid]) document.getElementById('cur-zone').textContent=ZONE_NAMES[zid];
+  document.getElementById('datalog').style.display='block';
+}
+
+function showKB(kbid) {
+  const el=document.getElementById(kbid); if(!el) return;
+  el.style.display='block';
+}
+
+function addCodex(items) {
+  const list=document.getElementById('def-list');
+  items.forEach(txt=>{
+    const d=document.createElement('div'); d.className='def fresh'; d.textContent=txt;
+    list.appendChild(d);
+    setTimeout(()=>d.classList.remove('fresh'),3000);
+  });
+}
+
+function loseLife(zid) {
+  S.lives[zid]--; const r=S.lives[zid];
+  const el=document.getElementById('lv-'+zid);
+  if(el) el.textContent='[ พลังชีวิต: ' + Math.max(r,0) + '/3 ]';
+  return r;
+}
+
+function succeed(zid) {
+  const nb=NEXT[zid], kb=KB_IDS[zid], ci=CODEX_ITEMS[zid];
+  if(kb) showKB(kb);
+  if(ci) addCodex(ci);
+  const btn=document.getElementById('btn-'+zid);
+  if(btn){ btn.textContent='[ ผ่าน ] รหัสผ่านถูกต้อง'; btn.className='btn btn-done'; btn.onclick=null; }
+  document.getElementById(zid+'-em').style.display='none';
+  if(nb) setTimeout(()=>unlockZone(nb), 1400);
+}
+
+function setForceProceed(zid) {
+  S.dead[zid]=true;
+  const nb=NEXT[zid], kb=KB_IDS[zid], ci=CODEX_ITEMS[zid];
+  const btn=document.getElementById('btn-'+zid);
+  if(btn){ btn.textContent='[ ข้าม ] ดูเฉลยแล้วกดเพื่อไปต่อ'; btn.className='btn'; btn.style.background='#333'; btn.style.color='#aaa';
+    btn.onclick=()=>{ if(kb) showKB(kb); if(ci) addCodex(ci); if(nb) setTimeout(()=>unlockZone(nb),500); btn.onclick=null; };
+  }
+}
+
+function showErr(zid, txt) {
+  const el=document.getElementById(zid+'-em');
+  el.textContent=txt; el.style.display='block';
+}
+
+// ─────────────────────────────────────────────
+// ZONE CHECKERS
+// ─────────────────────────────────────────────
+function chk(zid) {
+  if(S.dead[zid]){ document.getElementById('btn-'+zid).click(); return; }
+  const a=ANS[zid];
+  let wrong=[];
+
+  if(zid==='zp'){
+    if(!mcOK('pq1',a.pq1)) wrong.push('ข้อ 1');
+    if(!mcOK('pq2',a.pq2)) wrong.push('ข้อ 2');
+    if(!mcOK('pq3',a.pq3)) wrong.push('ข้อ 3');
+    if(wrong.length===0){
+      markMC('pq1',a.pq1); markMC('pq2',a.pq2); markMC('pq3',a.pq3); succeed('zp');
+    } else {
+      const r=loseLife('zp');
+      if(r<=0){ markMC('pq1',a.pq1); markMC('pq2',a.pq2); markMC('pq3',a.pq3);
+        showErr('zp','[ แจ้งเตือน ]: หมดพลังชีวิต! เฉลย: Q1=B, Q2=D, Q3=C — กดปุ่มอีกครั้งเพื่อข้ามด่าน'); setForceProceed('zp');
+      } else showErr('zp','[ ไม่ถูกต้อง ]: '+wrong.join(', ')+' — เหลือพลังชีวิต '+r+'/3');
+    }
+  }
+
+  else if(zid==='z1'){
+    if(!numOK('z1q1',a.z1q1)) wrong.push('ข้อ 1'); else markNum('z1q1',true);
+    if(!mcOK('z1q2',a.z1q2)) wrong.push('ข้อ 2'); else markMC('z1q2',a.z1q2);
+    if(!mcOK('z1q3_formula',a.z1q3_formula)) wrong.push('ข้อ 3'); else markMC('z1q3_formula',a.z1q3_formula);
+    if(!numOK('z1q4',a.z1q4)) wrong.push('ข้อ 4'); else markNum('z1q4',true);
+    if(!numOK('z1q5',a.z1q5)) wrong.push('ข้อ 5'); else markNum('z1q5',true);
+    ['z1q1','z1q4','z1q5'].forEach(id=>{ if(document.getElementById(id)?.value) markNum(id,numOK(id,a[id])); });
+    
+    if(wrong.length===0){ markMC('z1q2',a.z1q2); markMC('z1q3_formula',a.z1q3_formula); succeed('z1'); }
+    else {
+      const r=loseLife('z1');
+      if(r<=0){ markMC('z1q2',a.z1q2); markMC('z1q3_formula',a.z1q3_formula); ['z1q1','z1q4','z1q5'].forEach(id=>markNum(id,true));
+        showErr('z1','[ แจ้งเตือน ]: เฉลย: Q1=81, Q2=B, Q3=B, Q4=2187, Q5=7'); setForceProceed('z1');
+      } else showErr('z1','[ ไม่ถูกต้อง ]: '+wrong.join(', ')+' — เหลือพลังชีวิต '+r+'/3');
+    }
+  }
+
+  else if(zid==='z2'){
+    if(!numOK('z2q1',a.z2q1)) wrong.push('ข้อ 1'); else markNum('z2q1',true);
+    if(!numOK('z2q2',a.z2q2)) wrong.push('ข้อ 2'); else markNum('z2q2',true);
+    if(!mcOK('z2q3',a.z2q3)) wrong.push('ข้อ 3'); else markMC('z2q3',a.z2q3);
+    ['z2q1','z2q2'].forEach(id=>{ if(document.getElementById(id)?.value) markNum(id,numOK(id,a[id])); });
+    
+    if(wrong.length===0){ markMC('z2q3',a.z2q3); succeed('z2'); }
+    else {
+      const r=loseLife('z2');
+      if(r<=0){ markMC('z2q3',a.z2q3); ['z2q1','z2q2'].forEach(id=>markNum(id,true));
+        showErr('z2','[ แจ้งเตือน ]: เฉลย: Q1=2, Q2=8, Q3=A'); setForceProceed('z2');
+      } else showErr('z2','[ ไม่ถูกต้อง ]: '+wrong.join(', ')+' — เหลือพลังชีวิต '+r+'/3');
+    }
+  }
+
+  else if(zid==='z3'){
+    if(!numOK('z3q1r',a.z3q1r)||!numOK('z3q1a',a.z3q1a)) wrong.push('ข้อ 1');
+    else { markNum('z3q1r',true); markNum('z3q1a',true); }
+    if(!numOK('z3q2',a.z3q2)) wrong.push('ข้อ 2'); else markNum('z3q2',true);
+    if(!numOK('z3q3a',a.z3q3a)||!numOK('z3q3r',a.z3q3r)||!numOK('z3q3c',a.z3q3c)) wrong.push('ข้อ 3');
+    else { markNum('z3q3a',true); markNum('z3q3r',true); markNum('z3q3c',true); }
+    
+    ['z3q1r','z3q1a','z3q2','z3q3a','z3q3r','z3q3c'].forEach(id=>{ if(document.getElementById(id)?.value) markNum(id,numOK(id,a[id])); });
+    
+    if(wrong.length===0){ succeed('z3'); }
+    else {
+      const r=loseLife('z3');
+      if(r<=0){ ['z3q1r','z3q1a','z3q2','z3q3a','z3q3r','z3q3c'].forEach(id=>markNum(id,true));
+        showErr('z3','[ แจ้งเตือน ]: เฉลย: Q1(r=2, a₁=6), Q2=384, Q3(a₁=2, r=-3, a₈=-4374)'); setForceProceed('z3');
+      } else showErr('z3','[ ไม่ถูกต้อง ]: '+wrong.join(', ')+' — เหลือพลังชีวิต '+r+'/3');
+    }
+  }
+
+  else if(zid==='z4'){
+    if(!mcOK('z4q1',a.z4q1)) wrong.push('ข้อ 1'); else markMC('z4q1',a.z4q1);
+    if(!mcOK('z4q2',a.z4q2)) wrong.push('ข้อ 2'); else markMC('z4q2',a.z4q2);
+    if(!numOK('z4q3',a.z4q3)) wrong.push('ข้อ 3'); else markNum('z4q3',true);
+    
+    if(document.getElementById('z4q3')?.value) markNum('z4q3',numOK('z4q3',a.z4q3));
+    if(wrong.length===0){ markMC('z4q1',a.z4q1); markMC('z4q2',a.z4q2); succeed('z4'); }
+    else {
+      const r=loseLife('z4');
+      if(r<=0){ markMC('z4q1',a.z4q1); markMC('z4q2',a.z4q2); markNum('z4q3',true);
+        showErr('z4','[ แจ้งเตือน ]: เฉลย: Q1=C, Q2=A, Q3=4'); setForceProceed('z4');
+      } else showErr('z4','[ ไม่ถูกต้อง ]: '+wrong.join(', ')+' — เหลือพลังชีวิต '+r+'/3');
+    }
+  }
+
+  else if(zid==='z5'){
+    if(!numOK('z5q1',a.z5q1)) wrong.push('ข้อ 1'); else markNum('z5q1',true);
+    if(!numOK('z5q2',a.z5q2)) wrong.push('ข้อ 2'); else markNum('z5q2',true);
+    
+    ['z5q1','z5q2'].forEach(id=>{ if(document.getElementById(id)?.value) markNum(id,numOK(id,a[id])); });
+    if(wrong.length===0){ succeed('z5'); }
+    else {
+      const r=loseLife('z5');
+      if(r<=0){ ['z5q1','z5q2'].forEach(id=>markNum(id,true));
+        showErr('z5','[ แจ้งเตือน ]: เฉลย: Q1=162, Q2=8'); setForceProceed('z5');
+      } else showErr('z5','[ ไม่ถูกต้อง ]: '+wrong.join(', ')+' — เหลือพลังชีวิต '+r+'/3');
+    }
+  }
+
+  else if(zid==='z6'){
+    if(!numOK('z6q1r',a.z6q1r)) wrong.push('(ก)r'); else markNum('z6q1r',true);
+    if(!numOK('z6q1a',a.z6q1a)) wrong.push('(ก)a₁'); else markNum('z6q1a',true);
+    if(!numOK('z6q2',a.z6q2)) wrong.push('(ข)'); else markNum('z6q2',true);
+    if(!numOK('z6q3',a.z6q3)) wrong.push('(ค)'); else markNum('z6q3',true);
+    ['z6q1r','z6q1a','z6q2','z6q3'].forEach(id=>{ if(document.getElementById(id)?.value) markNum(id,numOK(id,a[id])); });
+    
+    if(wrong.length===0){
+      document.body.style.transition='background-color 3s ease';
+      setTimeout(()=>document.body.style.backgroundColor='#030e07',800);
+      succeed('z6');
+    } else {
+      const r=loseLife('z6');
+      if(r<=0){ 
+        ['z6q1r','z6q1a','z6q2','z6q3'].forEach(id=>markNum(id,true));
+        showErr('z6','[ แจ้งเตือน ]: เฉลย: (ก)r=2,a₁=3, (ข)10, (ค)0.33'); 
+        setForceProceed('z6');
+      } else {
+        showErr('z6','[ ไม่ถูกต้อง ]: '+wrong.join(', ')+' — เหลือพลังชีวิต '+r+'/3');
+      }
+    }
+  }
+}
+</script>
+</body>
+</html>
